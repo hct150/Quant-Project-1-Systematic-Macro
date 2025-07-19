@@ -1,0 +1,55 @@
+import pandas_datareader.data as web
+import pandas as pd
+import yfinance as yf
+
+# Time frame = past 15 calendar years
+start_date = '2000-01-01'
+end_date = '2024-12-31'
+
+# Downloading monthly macroeconomic indicators - Federal Reserve Economic Data (USA)
+macro = pd.DataFrame()
+macro['CPI'] = web.DataReader('CPIAUCNS', 'fred', start_date, end_date)      # Consumer Price Index (NSA)
+macro['FEDFUNDS'] = web.DataReader('FEDFUNDS', 'fred', start_date, end_date) # Fed Funds Rate
+macro['UNRATE'] = web.DataReader('UNRATE', 'fred', start_date, end_date)     # Unemployment Rate
+macro['T10Y2Y'] = web.DataReader('T10Y2Y', 'fred', start_date, end_date)     # 10Y-2Y Treasury spread, Yield Curve Spread, higher indicates expectation of economic growth 
+
+# Resample to monthly, if not already
+macro = macro.resample('M').last()
+macro_lagged = macro.shift(1)
+
+# Preview
+#print(macro_lagged.head())
+
+# Define tickers (macro asset proxies)
+tickers = ['SPY', 'TLT', 'GLD', 'USO', 'UUP', 'FXE']  # US stocks, bonds, gold, oil, USD, EUR
+
+# Download monthly close prices
+price_data = yf.download(tickers, start=start_date, end=end_date, interval='1mo', auto_adjust = True)['Close']
+
+#print(price_data.head())
+
+# Calculating returns and also dropping any Null fields
+returns = price_data.pct_change().dropna()
+
+#print(returns.head())
+
+macro_lagged.index = pd.to_datetime(macro_lagged.index)
+returns.index = pd.to_datetime(returns.index)
+
+macro_lagged.index = macro_lagged.index.to_period('M').to_timestamp('M')
+returns.index = returns.index.to_period('M').to_timestamp('M')
+
+combined = macro_lagged.join(returns, how='inner')
+
+print(combined.tail())
+
+#Checking for the dates that are algined between the two dataframes, appears to be 2007-04-30 to 2024-12-31
+#will use this as our working time frame
+#common_dates = macro_lagged.index.intersection(returns.index)
+#print(common_dates)
+
+
+
+#PREDICTION MODEL
+
+
